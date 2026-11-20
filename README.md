@@ -112,7 +112,10 @@ Todos los argumentos se validan **antes** de tocar la red o el modelo de embeddi
 
 Los errores de red se traducen a mensajes accionables (`hint`), y los **resultados vacíos** se devuelven como `ok: true` con `count: 0` y una `note`, para que el modelo no los confunda con fallas.
 
-Ejemplo real de la sesión de pruebas:
+### Ejemplo real: error → recuperación → respuesta
+
+Transcripción de una sesión de prueba (el texto de `apuntes` se cargó antes con el
+prompt de indexado de la sección 9):
 
 ```
 Usuario> Buscá en la coleccion apuntes_2026 que dice sobre banners de servicios.
@@ -120,19 +123,31 @@ Usuario> Buscá en la coleccion apuntes_2026 que dice sobre banners de servicios
 CALL  search_knowledge {"collection_name": "apuntes_2026", "query": "banners de servicios"}
 RESP  {"ok": false, "tool": "search_knowledge",
        "error": "la colección 'apuntes_2026' no existe",
-       "hint": "colecciones disponibles: default, indigno_ser_humano, reconocimiento"}
+       "hint": "colecciones disponibles: apuntes, default, indigno_ser_humano, reconocimiento"}
 
 CALL  list_collections {}
-CALL  search_knowledge {"collection_name": "reconocimiento", "query": "banners de servicios"}
-RESP  {"ok": true, "data": {"results": [], "count": 0},
-       "note": "la colección existe pero todavía no tiene documentos indexados"}
+RESP  {"ok": true, "data": {"collections": ["apuntes", "default",
+       "indigno_ser_humano", "reconocimiento"], "count": 4}}
 
-Agente> 1. Resultado: No se encontró información sobre banners de servicios en la
-           colección apuntes_2026 porque dicha colección no existe...
-        2. Evidencia: Se consultaron las colecciones con list_collections...
-        3. Límites: No hay documentos indexados sobre el tema. Sería necesario
-           indexar contenido previamente usando index_text...
+CALL  search_knowledge {"collection_name": "apuntes", "query": "banners de servicios"}
+RESP  {"ok": true, "data": {"count": 1, "results": [{"content": "Un banner TCP es el
+       texto que un servicio envía al establecerse la conexión...", "score": 0.7975}]}}
+
+Agente> Resultado: Los apuntes definen al banner TCP como el texto que un servicio
+         envía al conectarse para identificar de forma pasiva su producto y versión,
+         aclarando que es una técnica de reconocimiento autorizada.
+
+         Evidencia: Usé la herramienta search_knowledge en la colección "apuntes"
+         (ya que la colección "apuntes_2026" no existía), la cual devolvió el
+         fragmento: "Un banner TCP es el texto que un servicio envía...".
+
+         Límites: No se encontró información adicional sobre banners en otras
+         colecciones...
 ```
+
+En un solo turno el agente detectó el error, leyó el `hint`, corrigió el argumento y
+respondió con evidencia. Nada de eso está programado como flujo fijo: lo decide el
+modelo a partir del sobre de respuesta.
 
 ---
 
@@ -196,6 +211,9 @@ adk run agent
 ```
 
 ### Prompts de prueba sugeridos
+
+Los tres primeros van en orden: el segundo crea la colección `apuntes` y el tercero
+la consulta.
 
 ```
 Listá las colecciones que hay en la base de conocimiento.
@@ -273,6 +291,7 @@ python -m pytest -v
 - Las herramientas de red (`nmap_scan`, `tcp_banner_grab`, `http_probe`) deben usarse **solo contra objetivos propios o de laboratorio**. El prompt lo declara como restricción y el agente rechaza pedidos contra terceros sin autorización, pero la garantía real es la validación de argumentos, no el modelo.
 - El RAG necesita Ollama corriendo con `nomic-embed-text`. Si no está disponible, las herramientas devuelven un error explicativo en lugar de fallar en silencio.
 - `web_search` depende de DuckDuckGo y puede devolver resultados vacíos o limitados por rate limiting.
+- El proveedor de Gemini puede responder `503 UNAVAILABLE` en momentos de alta demanda; es transitorio, se resuelve reintentando el mensaje.
 - El agente no persiste memoria entre conversaciones más allá de la sesión de ADK.
 
 ---
