@@ -1,0 +1,22 @@
+# Dependencias del agente de reconocimiento (ADK + LiteLLM).
+# Instalación:  uv pip install -r requirements.txt
+#               (o)  python -m pip install -r requirements.txt
+
+# --- Framework del agente ---
+google-adk==2.13.0
+litellm==1.105.1
+
+# --- Herramientas de conocimiento (RAG) ---
+chromadb==1.5.9
+langchain-chroma==1.1.0
+langchain-ollama==1.1.0
+langchain-text-splitters==1.1.3
+
+# --- Herramienta de búsqueda web ---
+ddgs==9.16.1
+
+# --- Configuración por variables de entorno ---
+python-dotenv==1.2.4
+
+# --- Tests ---
+pytest==9.2.0
